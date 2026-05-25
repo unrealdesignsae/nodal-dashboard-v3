@@ -47,7 +47,7 @@ export function Sidebar({ active = 'sheets' }: { active?: string }) {
           <span className="nav-label">DASHBOARD</span>
         </Link>
 
-        <Link href="/" className={`nav-item ${active === 'sheets' ? 'active' : ''}`}>
+        <Link href="/sheets" className={`nav-item ${active === 'sheets' ? 'active' : ''}`}>
           <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d={icons['sheets']} />
           </svg>

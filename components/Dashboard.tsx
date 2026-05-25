@@ -1,23 +1,20 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { EMBEDDED_SHEET_DATA, TAB_NAMES } from '@/lib/sheet-data';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { EMBEDDED_SHEET_DATA } from '@/lib/sheet-data';
 import { useSheetData } from '@/lib/sheet-store';
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ─────────────────────────────────────────────
    DATA HELPERS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+───────────────────────────────────────────── */
 
 function s(v: unknown): string { return v == null ? '' : String(v).trim(); }
-
 type SheetData = typeof EMBEDDED_SHEET_DATA;
 
 function getTeam(sd: SheetData) {
-  const rows = sd.OVERVIEW.rows;
   const out: { role: string; name: string; phone: string; email: string }[] = [];
   let in3 = false;
-  for (const r of rows) {
+  for (const r of sd.OVERVIEW.rows) {
     const c0 = s(r.cells?.[0]).replace(':', '');
     if (c0.includes('3. PRODUCTION TEAM')) { in3 = true; continue; }
     if (c0.includes('4.')) break;
@@ -29,10 +26,9 @@ function getTeam(sd: SheetData) {
 }
 
 function getSuppliers(sd: SheetData) {
-  const rows = sd.OVERVIEW.rows;
   const out: { dept: string; company: string; contact: string }[] = [];
   let in4 = false;
-  for (const r of rows) {
+  for (const r of sd.OVERVIEW.rows) {
     const c0 = s(r.cells?.[0]);
     if (c0.includes('4. SUPPLIERS')) { in4 = true; continue; }
     if (c0.includes('5.') || c0.includes('TABLE')) break;
@@ -42,24 +38,38 @@ function getSuppliers(sd: SheetData) {
   return out;
 }
 
-const PHASE: Record<string, { color: string; bg: string; label: string; short: string }> = {
-  show:   { color: '#00ff88', bg: 'rgba(0,255,136,0.12)',  label: 'SHOW',   short: 'S' },
-  build:  { color: '#00d4ff', bg: 'rgba(0,212,255,0.10)',  label: 'BUILD',  short: 'B' },
-  prep:   { color: '#a855f7', bg: 'rgba(168,85,247,0.10)', label: 'PREP',   short: 'P' },
-  steel:  { color: '#f0b40a', bg: 'rgba(240,180,10,0.10)', label: 'OUT',    short: 'O' },
-  travel: { color: '#667085', bg: 'rgba(102,112,133,0.08)', label: 'TRAVEL', short: 'T' },
+function getAlerts(team: ReturnType<typeof getTeam>, suppliers: ReturnType<typeof getSuppliers>) {
+  const out: { level: 'high' | 'med'; text: string; note: string }[] = [];
+  const keyRoles = ['Technical Manager', 'Power Crew Chief', 'Laser Operator', 'Stagehand Coordinator', 'Backline Responsible'];
+  team.filter(t => keyRoles.includes(t.role) && !t.name).forEach(t =>
+    out.push({ level: 'high', text: t.role, note: 'No crew assigned' })
+  );
+  suppliers.filter(s => !s.company).forEach(s =>
+    out.push({ level: 'high', text: `${s.dept} supplier`, note: 'No company contracted' })
+  );
+  out.push({ level: 'med', text: 'Show dates TBD', note: 'Build + show days not confirmed' });
+  out.push({ level: 'med', text: 'Emergency contact TBD', note: 'Site emergency number missing' });
+  out.push({ level: 'med', text: 'Curfew / Last Act TBD', note: 'Show end time not set' });
+  return out;
+}
+
+const PHASE: Record<string, { color: string; bg: string; label: string }> = {
+  show:   { color: '#00ff88', bg: 'rgba(0,255,136,0.13)',  label: 'SHOW'   },
+  build:  { color: '#00d4ff', bg: 'rgba(0,212,255,0.11)',  label: 'BUILD'  },
+  prep:   { color: '#a855f7', bg: 'rgba(168,85,247,0.12)', label: 'PREP'   },
+  steel:  { color: '#f0b40a', bg: 'rgba(240,180,10,0.11)', label: 'OUT'    },
+  travel: { color: '#64748b', bg: 'rgba(100,116,139,0.09)', label: 'TRAVEL' },
 };
 
 function getSchedule(sd: SheetData) {
-  const rows = sd['Sheet1'].rows;
-  const out: { date: string; tag: string; phase: string; detail: string; type: string }[] = [];
-  for (const r of rows) {
+  const out: { date: string; tag: string; detail: string; type: string }[] = [];
+  for (const r of sd['Sheet1'].rows) {
     const date = s(r.cells?.[0]); const tag = s(r.cells?.[1]);
     const phase = s(r.cells?.[2]); const detail = s(r.cells?.[3]);
     if (!date || !/\d+\/Jul/i.test(date)) continue;
     const p = (phase + tag).toLowerCase();
     const type = p.includes('show') || /day [123]/.test(p) ? 'show'
-      : p.includes('steel') || p.includes('load out') || p.includes('loadings') ? 'steel'
+      : p.includes('steel') || p.includes('load out') || p.includes('loading') ? 'steel'
       : p.includes('travel') ? 'travel'
       : p.includes('probe') || p.includes('program') || p.includes('day 0') ? 'prep'
       : 'build';
@@ -68,469 +78,436 @@ function getSchedule(sd: SheetData) {
   return out;
 }
 
-function getAlerts(team: ReturnType<typeof getTeam>, suppliers: ReturnType<typeof getSuppliers>) {
-  const out: { level: 'high' | 'med'; text: string; note: string }[] = [];
-  const keyRoles = ['Technical Manager', 'Power Crew Chief', 'Laser Operator', 'Stagehand Coordinator', 'Backline Responsible'];
-  team.filter(t => keyRoles.includes(t.role) && !t.name)
-    .forEach(t => out.push({ level: 'high', text: `${t.role}`, note: 'No crew assigned' }));
-  suppliers.filter(s => !s.company)
-    .forEach(s => out.push({ level: 'high', text: `${s.dept} supplier`, note: 'No company contracted' }));
-  out.push({ level: 'med', text: 'Show dates TBD', note: 'Build + show days not confirmed' });
-  out.push({ level: 'med', text: 'Emergency contact TBD', note: 'Site emergency number missing' });
-  out.push({ level: 'med', text: 'Curfew / Last Act TBD', note: 'Show end time not set' });
-  return out;
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ─────────────────────────────────────────────
    HOOKS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+───────────────────────────────────────────── */
 
-function useVisible(threshold = 0.05) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect(); } }, { threshold });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, vis };
-}
-
-function useCountdown(targetDate: Date) {
+function useCountdown(target: Date) {
   const [diff, setDiff] = useState(0);
   useEffect(() => {
-    const tick = () => setDiff(Math.max(0, targetDate.getTime() - Date.now()));
+    const tick = () => setDiff(Math.max(0, target.getTime() - Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [targetDate]);
-  const totalSec = Math.floor(diff / 1000);
-  const d = Math.floor(totalSec / 86400);
-  const h = Math.floor((totalSec % 86400) / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const sec = totalSec % 60;
-  return { d, h, m, sec };
+  }, [target]);
+  const total = Math.floor(diff / 1000);
+  return {
+    d: Math.floor(total / 86400),
+    h: Math.floor((total % 86400) / 3600),
+    m: Math.floor((total % 3600) / 60),
+    sec: total % 60,
+  };
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   RADIAL PROGRESS RING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function useInView() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect(); } }, { threshold: 0.05 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, vis };
+}
 
-function RadialRing({ pct, color, size = 72, stroke = 5, children }: {
-  pct: number; color: string; size?: number; stroke?: number; children?: React.ReactNode;
-}) {
-  const r = (size - stroke * 2) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - Math.max(0, Math.min(1, pct)));
+/* ─────────────────────────────────────────────
+   COUNTDOWN DIGIT
+───────────────────────────────────────────── */
+
+function Digit({ n, label }: { n: number; label: string }) {
+  const str = String(n).padStart(2, '0');
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)', filter: `drop-shadow(0 0 6px ${color})` }} />
-      </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
       <div style={{
-        position: 'absolute', inset: 0, display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column',
+        background: 'rgba(0,212,255,0.08)',
+        border: '1px solid rgba(0,212,255,0.25)',
+        borderRadius: 10,
+        padding: '8px 14px',
+        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        fontSize: 'clamp(22px, 3vw, 36px)',
+        fontWeight: 800,
+        color: '#00d4ff',
+        letterSpacing: 2,
+        minWidth: 64,
+        textAlign: 'center',
+        lineHeight: 1,
+        textShadow: '0 0 20px rgba(0,212,255,0.5)',
+        transition: 'all 0.3s ease',
       }}>
-        {children}
+        {str}
+      </div>
+      <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.15em', color: 'rgba(0,212,255,0.5)', fontWeight: 600 }}>
+        {label}
       </div>
     </div>
   );
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   COUNTDOWN UNIT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ─────────────────────────────────────────────
+   STAT CARD
+───────────────────────────────────────────── */
 
-function CountUnit({ n, label }: { n: number; label: string }) {
-  return (
-    <div className="d3-count-unit">
-      <div className="d3-count-num">{String(n).padStart(2, '0')}</div>
-      <div className="d3-count-label">{label}</div>
-    </div>
-  );
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   BENTO CARD SHELL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-function BentoCard({ title, badge, accent = '#00d4ff', badgeRed, children, style, className = '' }: {
-  title: string; badge?: string; accent?: string; badgeRed?: boolean;
-  children: React.ReactNode; style?: React.CSSProperties; className?: string;
+function StatCard({ label, value, sub, color, delay = 0 }: {
+  label: string; value: string; sub: string; color: string; delay?: number;
 }) {
+  const { ref, vis } = useInView();
   return (
-    <div className={`d3-bento ${className}`} style={style}>
-      <div className="d3-bento-head" style={{ '--accent-line': accent } as React.CSSProperties}>
-        <div className="d3-bento-head-accent" style={{ background: accent }} />
-        <span className="d3-bento-title">{title}</span>
-        {badge && <span className={`d3-bento-badge${badgeRed ? ' d3-bento-badge-red' : ''}`}>{badge}</span>}
+    <div
+      ref={ref}
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: `1px solid rgba(255,255,255,0.07)`,
+        borderRadius: 12,
+        padding: '14px 16px',
+        flex: 1,
+        minWidth: 100,
+        position: 'relative',
+        overflow: 'hidden',
+        opacity: vis ? 1 : 0,
+        transform: vis ? 'translateY(0)' : 'translateY(12px)',
+        transition: `all 0.4s ease ${delay}ms`,
+        cursor: 'default',
+      }}
+    >
+      <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${color}08 0%, transparent 60%)`, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${color}, transparent)` }} />
+      <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', marginBottom: 6, fontWeight: 600 }}>
+        {label}
       </div>
-      <div className="d3-bento-body">{children}</div>
+      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 'clamp(16px, 2vw, 24px)', fontWeight: 800, color, lineHeight: 1, marginBottom: 4, textShadow: `0 0 16px ${color}60` }}>
+        {value}
+      </div>
+      <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.3)', lineHeight: 1.3 }}>
+        {sub}
+      </div>
     </div>
   );
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ─────────────────────────────────────────────
    SWIMLANE TIMELINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+───────────────────────────────────────────── */
 
-function SwimlaneTimeline() {
-  const { ref, vis } = useVisible();
-  const sd = useSheetData();
-  const events = getSchedule(sd);
-  const lanes = Object.entries(PHASE).filter(([k]) => events.some(e => e.type === k));
+function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
+  const lanes: Record<string, typeof schedule> = { show: [], build: [], prep: [], steel: [], travel: [] };
+  for (const e of schedule) {
+    if (lanes[e.type]) lanes[e.type].push(e);
+  }
+
   return (
-    <BentoCard title="Production Schedule" badge="3 Jul — 26 Jul 2026" accent="#00d4ff" style={{ gridArea: 'timeline' }}>
-      {/* Legend */}
-      <div className="d3-swim-legend">
-        {Object.entries(PHASE).map(([k, v]) => (
-          <span key={k} className="d3-swim-legend-item" style={{ '--lc': v.color } as React.CSSProperties}>
-            <span className="d3-swim-dot" />
-            {v.label}
-          </span>
-        ))}
+    <div style={{
+      background: 'rgba(255,255,255,0.025)',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: 16,
+      overflow: 'hidden',
+      flex: 1,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: '#00d4ff', borderRadius: 2 }} />
+          <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.85)' }}>PRODUCTION SCHEDULE</span>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {Object.entries(PHASE).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.color }} />
+              <span style={{ fontFamily: 'monospace', fontSize: 9, color: v.color, letterSpacing: '0.08em' }}>{v.label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontFamily: 'monospace', fontSize: 9, color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 8px' }}>
+          3 Jul – 26 Jul 2026
+        </div>
       </div>
+
       {/* Lanes */}
-      <div ref={ref} className="d3-swim-lanes">
-        {lanes.map(([key, meta]) => {
-          const laneEvts = events.filter(e => e.type === key);
+      <div style={{ padding: '10px 0' }}>
+        {Object.entries(lanes).map(([type, events]) => {
+          if (!events.length) return null;
+          const ph = PHASE[type];
           return (
-            <div key={key} className="d3-swim-lane">
-              <div className="d3-swim-lane-label" style={{ color: meta.color }}>
-                <span className="d3-swim-lane-dot" style={{ background: meta.color }} />
-                {meta.label}
+            <div key={type} style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              {/* Lane label */}
+              <div style={{ width: 70, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px 4px 18px' }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: ph.color, boxShadow: `0 0 6px ${ph.color}` }} />
+                <span style={{ fontFamily: 'monospace', fontSize: 9, color: ph.color, fontWeight: 700, letterSpacing: '0.1em' }}>{ph.label}</span>
               </div>
-              <div className="d3-swim-track">
-                {laneEvts.map((ev, i) => (
-                  <div key={i}
-                    className="d3-swim-pill"
-                    style={{
-                      background: meta.bg,
-                      borderColor: meta.color,
-                      color: meta.color,
-                      opacity: vis ? 1 : 0,
-                      transform: vis ? 'none' : 'translateY(6px)',
-                      transition: `opacity 300ms ${i * 40}ms, transform 300ms ${i * 40}ms`,
-                    }}
-                  >
-                    <strong>{ev.tag || ev.date}</strong>
-                    {ev.phase && <span className="d3-swim-pill-sub">{ev.phase}</span>}
-                  </div>
-                ))}
+              {/* Events */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', padding: '2px 12px 2px 0', flex: 1 }}>
+                {events.map((e, i) => {
+                  const dateNum = e.date.replace('/Jul', '/Jul');
+                  const label = e.tag || e.detail || e.phase;
+                  const short = label.length > 28 ? label.slice(0, 26) + '…' : label;
+                  return (
+                    <div key={i} title={`${e.date} — ${label}`} style={{
+                      background: ph.bg,
+                      border: `1px solid ${ph.color}30`,
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      cursor: 'default',
+                      transition: 'border-color 0.2s',
+                    }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 9, color: ph.color, fontWeight: 700, whiteSpace: 'nowrap' }}>{dateNum}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 9, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap' }}>{short}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
-    </BentoCard>
+    </div>
   );
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ─────────────────────────────────────────────
    ALERT FEED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+───────────────────────────────────────────── */
 
-function AlertFeed({ items }: { items: ReturnType<typeof getAlerts> }) {
-  const { ref, vis } = useVisible();
-  const high = items.filter(a => a.level === 'high');
-  const med  = items.filter(a => a.level === 'med');
+function AlertFeed({ alerts }: { alerts: ReturnType<typeof getAlerts> }) {
+  const high = alerts.filter(a => a.level === 'high');
+  const med  = alerts.filter(a => a.level === 'med');
+
+  const AlertRow = ({ a, i }: { a: typeof alerts[0]; i: number }) => {
+    const isHigh = a.level === 'high';
+    const col = isHigh ? '#ff4757' : '#f0b40a';
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 14px',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        opacity: 0,
+        animation: `fadeSlide 0.3s ease ${i * 50}ms forwards`,
+        cursor: 'default',
+        transition: 'background 0.2s',
+      }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        <div style={{
+          width: 26, height: 26, borderRadius: 7, background: `${col}18`, border: `1px solid ${col}40`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <line x1="3" y1="3" x2="9" y2="9" stroke={col} strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="9" y1="3" x2="3" y2="9" stroke={col} strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.85)', lineHeight: 1.2 }}>{a.text}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 9, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{a.note}</div>
+        </div>
+        <div style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 700, color: col, background: `${col}15`, border: `1px solid ${col}30`, borderRadius: 4, padding: '2px 6px', letterSpacing: '0.08em', flexShrink: 0 }}>
+          {isHigh ? 'HIGH' : 'MED'}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <BentoCard title="Action Required" badge={`${items.length} open`} badgeRed accent="#ff4757" style={{ gridArea: 'alerts' }}>
-      <div ref={ref} className="d3-alert-feed">
+    <div style={{
+      background: 'rgba(255,255,255,0.025)',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: 16,
+      overflow: 'hidden',
+      width: 'clamp(300px, 35%, 420px)',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: '#ff4757', borderRadius: 2 }} />
+          <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.85)' }}>ACTION REQUIRED</span>
+        </div>
+        <div style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: '#ff4757', background: 'rgba(255,71,87,0.12)', border: '1px solid rgba(255,71,87,0.3)', borderRadius: 6, padding: '3px 8px', letterSpacing: '0.08em' }}>
+          {alerts.length} OPEN
+        </div>
+      </div>
+
+      {/* List */}
+      <div style={{ overflowY: 'auto', flex: 1, maxHeight: 420 }}>
         {high.length > 0 && (
-          <div className="d3-alert-section-label" style={{ color: '#ff4757' }}>
-            <span style={{ fontSize: 8 }}>▲</span> HIGH PRIORITY
+          <div style={{ padding: '8px 14px 4px', fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.15em', color: '#ff475780', fontWeight: 700 }}>
+            ▲ HIGH PRIORITY
           </div>
         )}
-        {high.map((a, i) => (
-          <div key={i} className="d3-alert-item d3-alert-high"
-            style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateX(8px)', transition: `all 280ms ${i * 50}ms` }}>
-            <div className="d3-alert-severity-bar" style={{ background: '#ff4757' }} />
-            <div className="d3-alert-content">
-              <div className="d3-alert-icon-badge" style={{ background: 'rgba(255,71,87,0.15)', color: '#ff4757' }}>✗</div>
-              <div>
-                <div className="d3-alert-title">{a.text}</div>
-                <div className="d3-alert-note">{a.note}</div>
-              </div>
-            </div>
-          </div>
-        ))}
+        {high.map((a, i) => <AlertRow key={i} a={a} i={i} />)}
         {med.length > 0 && (
-          <div className="d3-alert-section-label" style={{ color: '#f0b40a', marginTop: 8 }}>
-            <span style={{ fontSize: 8 }}>◆</span> PENDING
+          <div style={{ padding: '10px 14px 4px', fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.15em', color: '#f0b40a80', fontWeight: 700 }}>
+            ● MEDIUM PRIORITY
           </div>
         )}
-        {med.map((a, i) => (
-          <div key={i} className="d3-alert-item d3-alert-med"
-            style={{ opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateX(8px)', transition: `all 280ms ${(high.length + i) * 50}ms` }}>
-            <div className="d3-alert-severity-bar" style={{ background: '#f0b40a' }} />
-            <div className="d3-alert-content">
-              <div className="d3-alert-icon-badge" style={{ background: 'rgba(240,180,10,0.12)', color: '#f0b40a' }}>⚠</div>
-              <div>
-                <div className="d3-alert-title">{a.text}</div>
-                <div className="d3-alert-note">{a.note}</div>
-              </div>
-            </div>
-          </div>
-        ))}
+        {med.map((a, i) => <AlertRow key={i} a={a} i={high.length + i} />)}
       </div>
-    </BentoCard>
+    </div>
   );
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   TEAM RING CARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-function TeamCard({ members }: { members: ReturnType<typeof getTeam> }) {
-  const { ref, vis } = useVisible();
-  const ok = members.filter(m => m.name).length;
-  const pct = members.length ? ok / members.length : 0;
-  const color = pct < 1 ? (pct < 0.6 ? '#ff4757' : '#f0b40a') : '#00ff88';
-  return (
-    <BentoCard title="Production Team" badge={`${ok} / ${members.length} assigned`}
-      badgeRed={ok < members.length} accent="#a855f7" style={{ gridArea: 'team' }}>
-      {/* Ring header */}
-      <div ref={ref} className="d3-team-ring-row">
-        <RadialRing pct={vis ? pct : 0} color={color} size={76} stroke={5}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color }}>
-            {Math.round(pct * 100)}%
-          </span>
-        </RadialRing>
-        <div className="d3-team-ring-stats">
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>ASSIGNED</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#00ff88' }}>{ok}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>TOTAL</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{members.length}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>OPEN</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#ff4757' }}>{members.length - ok}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Member list */}
-      <div className="d3-member-list">
-        {members.map((m, i) => (
-          <div key={i} className={`d3-member-row${m.name ? '' : ' d3-member-missing'}`}
-            style={{ opacity: vis ? 1 : 0, transition: `opacity 250ms ${i * 30}ms` }}>
-            <div className="d3-member-avatar" style={{
-              background: m.name ? 'linear-gradient(135deg,#a855f7 0%,#6d28d9 100%)' : 'transparent',
-              border: m.name ? 'none' : '1px dashed rgba(255,71,87,0.5)',
-              color: m.name ? '#fff' : '#ff4757',
-            }}>
-              {m.name ? m.name.split(' ').map(n => n[0]).join('').slice(0, 2) : '?'}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="d3-member-role">{m.role}</div>
-              <div className="d3-member-name" style={{ color: m.name ? 'var(--text)' : '#ff4757' }}>
-                {m.name || 'TBD — Unassigned'}
-              </div>
-            </div>
-            {m.phone && m.name && <div className="d3-member-phone">{m.phone}</div>}
-            {!m.name && <span className="d3-tbd-pill">TBD</span>}
-          </div>
-        ))}
-      </div>
-    </BentoCard>
-  );
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SUPPLIERS RING CARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-function SuppliersCard({ list }: { list: ReturnType<typeof getSuppliers> }) {
-  const { ref, vis } = useVisible();
-  const ok = list.filter(s => s.company).length;
-  const pct = list.length ? ok / list.length : 0;
-  const color = pct < 1 ? (pct < 0.6 ? '#ff4757' : '#f0b40a') : '#00ff88';
-  return (
-    <BentoCard title="Suppliers" badge={`${list.length - ok} unconfirmed`} badgeRed={ok < list.length}
-      accent="#f0b40a" style={{ gridArea: 'suppliers' }}>
-      {/* Ring + stats */}
-      <div ref={ref} className="d3-team-ring-row">
-        <RadialRing pct={vis ? pct : 0} color={color} size={76} stroke={5}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color }}>
-            {Math.round(pct * 100)}%
-          </span>
-        </RadialRing>
-        <div className="d3-team-ring-stats">
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>CONFIRMED</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#00ff88' }}>{ok}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>TOTAL</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{list.length}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>TBD</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#f0b40a' }}>{list.length - ok}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Supplier rows */}
-      <div className="d3-sup-list">
-        {list.map((s, i) => (
-          <div key={i} className="d3-sup-row"
-            style={{ opacity: vis ? 1 : 0, transition: `opacity 250ms ${i * 25}ms` }}>
-            <div className="d3-sup-dept">{s.dept}</div>
-            <div className="d3-sup-company" style={{ color: s.company ? 'var(--text)' : '#ff4757' }}>
-              {s.company || 'TBD'}
-            </div>
-            <div className="d3-sup-contact">{s.contact || '—'}</div>
-            <span className="d3-sup-status" style={{ color: s.company ? '#00ff88' : '#ff4757' }}>
-              {s.company ? '✓' : '✗'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </BentoCard>
-  );
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DISCIPLINE TILES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-const D_COLOR: Record<string, string> = {
-  AUDIO: '#00d4ff', LIGHTING: '#f0b40a', 'VIDEO - LED': '#a855f7',
-  LASER: '#00ff88', 'SFX - PYRO': '#ff6b35', POWER: '#ff4757',
-  RIGGING: '#8892a4', BACKLINE: '#00d4ff', BROADCAST: '#a855f7',
-  STAGING: '#f0b40a', Sheet1: '#667085',
-};
-const D_ICON: Record<string, string> = {
-  Sheet1: '📅', AUDIO: '🔊', LIGHTING: '💡', 'VIDEO - LED': '🖥',
-  LASER: '⚡', 'SFX - PYRO': '🔥', POWER: '⚡', RIGGING: '🔩',
-  BACKLINE: '🎸', BROADCAST: '📡', STAGING: '🏗',
-};
-
-function DisciplineTiles() {
-  const { ref, vis } = useVisible();
-  const sd = useSheetData();
-  const depts = TAB_NAMES.filter(t => t !== 'OVERVIEW') as string[];
-  return (
-    <BentoCard title="Discipline Sheets" badge={`${depts.length} tabs`} accent="#00d4ff" style={{ gridArea: 'depts' }}>
-      <div ref={ref} className="d3-tile-grid">
-        {depts.map((tab, i) => {
-          const data = sd[tab as keyof typeof sd];
-          const color = D_COLOR[tab] || '#00d4ff';
-          return (
-            <Link key={tab} href={`/sheet/${encodeURIComponent(tab)}`}
-              className="d3-tile"
-              style={{
-                '--tc': color as string,
-                opacity: vis ? 1 : 0,
-                transform: vis ? 'none' : 'translateY(12px) scale(0.97)',
-                transition: `opacity 320ms ${i * 45}ms, transform 320ms ${i * 45}ms`,
-              } as React.CSSProperties}>
-              <div className="d3-tile-glow" style={{ background: color }} />
-              <div className="d3-tile-icon">{D_ICON[tab] || '📋'}</div>
-              <div className="d3-tile-name">{tab === 'Sheet1' ? 'SCHEDULE' : tab}</div>
-              <div className="d3-tile-rows">{data?.nonEmptyRows ?? 0} rows</div>
-              <div className="d3-tile-arrow">→</div>
-            </Link>
-          );
-        })}
-      </div>
-    </BentoCard>
-  );
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ─────────────────────────────────────────────
    MAIN DASHBOARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+───────────────────────────────────────────── */
 
 export function Dashboard() {
-  // Use live store data when available, falls back to embedded snapshot
-  const sheetData = useSheetData();
+  const sheetData  = useSheetData();
+  const team       = getTeam(sheetData);
+  const suppliers  = getSuppliers(sheetData);
+  const alerts     = getAlerts(team, suppliers);
+  const schedule   = getSchedule(sheetData);
+  const teamOk     = team.filter(t => t.name).length;
+  const suppOk     = suppliers.filter(s => s.company).length;
+  const highCount  = alerts.filter(a => a.level === 'high').length;
 
-  const team      = getTeam(sheetData);
-  const suppliers = getSuppliers(sheetData);
-  const alerts    = getAlerts(team, suppliers);
-  const teamOk    = team.filter(t => t.name).length;
-  const suppOk    = suppliers.filter(s => s.company).length;
-  const highCount = alerts.filter(a => a.level === 'high').length;
-
-  // Countdown to show: 17 Jul 2026
   const showDate = new Date('2026-07-17T18:00:00');
   const { d, h, m, sec } = useCountdown(showDate);
 
+  const stats = [
+    { label: 'EVENT',     value: 'EC26',                       sub: 'Electric Castle',         color: '#00d4ff' },
+    { label: 'VENUE',     value: 'MAINSTAGE',                  sub: 'Banffy Castle, Romania',  color: '#00d4ff' },
+    { label: 'BUILD',     value: '12 DAYS',                    sub: '3 – 14 Jul 2026',         color: '#00d4ff' },
+    { label: 'SHOW DAYS', value: '3',                          sub: '17 – 19 Jul 2026',        color: '#00ff88' },
+    { label: 'TEAM',      value: `${teamOk}/${team.length}`,   sub: `${team.length - teamOk} unassigned`,    color: teamOk < team.length ? '#f0b40a' : '#00ff88' },
+    { label: 'SUPPLIERS', value: `${suppOk}/${suppliers.length}`, sub: `${suppliers.length - suppOk} TBD`,   color: suppOk < suppliers.length ? '#f0b40a' : '#00ff88' },
+    { label: 'ACTIONS',   value: String(highCount),            sub: 'high priority',           color: highCount > 0 ? '#ff4757' : '#00ff88' },
+  ];
+
   return (
-    <div className="main-content d3-page">
+    <>
+      <style>{`
+        @keyframes fadeSlide {
+          from { opacity: 0; transform: translateX(8px); }
+          to   { opacity: 1; transform: translateX(0);   }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.4; }
+        }
+        @keyframes scanline {
+          from { transform: translateY(-100%); }
+          to   { transform: translateY(100vh); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+      `}</style>
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <div className="d3-hero">
-        <div className="d3-hero-grid-bg" />
-        <div className="d3-hero-gradient" />
+      <div className="main-content" style={{
+        padding: '20px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        minHeight: '100vh',
+        boxSizing: 'border-box',
+        position: 'relative',
+      }}>
 
-        <div className="d3-hero-left">
-          <div className="d3-hero-eyebrow">
-            <span className="d3-pulse-dot" />
-            EC26 · MAINSTAGE ADVANCING
+        {/* ── HERO HEADER ─────────────────────────── */}
+        <div style={{
+          background: 'rgba(255,255,255,0.025)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 18,
+          padding: '20px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 24,
+          position: 'relative',
+          overflow: 'hidden',
+          flexWrap: 'wrap',
+        }}>
+          {/* Subtle background glow */}
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 20% 50%, rgba(255,20,20,0.06) 0%, transparent 60%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, #ff2020, rgba(255,32,32,0.1), transparent)', pointerEvents: 'none' }} />
+
+          {/* Left: Logo + Event Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, zIndex: 1 }}>
+            {/* Eyebrow */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', animation: 'pulse 2s ease infinite', boxShadow: '0 0 8px #00ff88' }} />
+              <span style={{ fontFamily: 'monospace', fontSize: 10, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>
+                MAINSTAGE ADVANCING · NODAL TC
+              </span>
+            </div>
+
+            {/* EC Logo */}
+            <img
+              src="/ec-logo.png"
+              alt="Electric Castle 16–19 July 2026"
+              style={{
+                height: 'clamp(50px, 6.5vw, 90px)',
+                width: 'auto',
+                objectFit: 'contain',
+                objectPosition: 'left center',
+                filter: 'drop-shadow(0 4px 24px rgba(255,20,20,0.45))',
+              }}
+            />
+
+            {/* Sub info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                  <circle cx="12" cy="9" r="2.5"/>
+                </svg>
+                <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
+                  Banffy Castle Domain · Bonțida, Romania
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
+                  16 – 19 July 2026
+                </span>
+              </div>
+            </div>
           </div>
-          <h1 className="d3-hero-title">Electric Castle<br /><span className="d3-hero-title-accent">2026</span></h1>
-          <p className="d3-hero-location">Banffy Castle Domain · Bonțida, Romania</p>
+
+          {/* Right: Countdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, zIndex: 1 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.18em', color: 'rgba(0,212,255,0.55)', fontWeight: 700 }}>
+              SHOWTIME COUNTDOWN
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+              <Digit n={d}   label="DAYS" />
+              <div style={{ fontFamily: 'monospace', fontSize: 24, color: 'rgba(0,212,255,0.4)', lineHeight: 1, paddingBottom: 18 }}>:</div>
+              <Digit n={h}   label="HRS"  />
+              <div style={{ fontFamily: 'monospace', fontSize: 24, color: 'rgba(0,212,255,0.4)', lineHeight: 1, paddingBottom: 18 }}>:</div>
+              <Digit n={m}   label="MIN"  />
+              <div style={{ fontFamily: 'monospace', fontSize: 24, color: 'rgba(0,212,255,0.4)', lineHeight: 1, paddingBottom: 18 }}>:</div>
+              <Digit n={sec} label="SEC"  />
+            </div>
+            <div style={{
+              fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.1em',
+              color: '#00ff88', background: 'rgba(0,255,136,0.08)',
+              border: '1px solid rgba(0,255,136,0.25)', borderRadius: 6, padding: '4px 10px',
+              textShadow: '0 0 10px rgba(0,255,136,0.4)',
+            }}>
+              17 – 19 July 2026 · Show Days
+            </div>
+          </div>
         </div>
 
-        <div className="d3-hero-right">
-          <div className="d3-countdown-label">SHOWTIME COUNTDOWN</div>
-          <div className="d3-countdown">
-            <CountUnit n={d} label="DAYS" />
-            <span className="d3-count-sep">:</span>
-            <CountUnit n={h} label="HRS" />
-            <span className="d3-count-sep">:</span>
-            <CountUnit n={m} label="MIN" />
-            <span className="d3-count-sep">:</span>
-            <CountUnit n={sec} label="SEC" />
-          </div>
-          <div className="d3-hero-date-badge">17 – 19 July 2026 · Show Days</div>
+        {/* ── STAT BAR ─────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {stats.map((st, i) => (
+            <StatCard key={i} {...st} delay={i * 60} />
+          ))}
         </div>
-      </div>
 
-      {/* ── STATUS BAR ───────────────────────────────────────── */}
-      <div className="d3-status-bar">
-        {[
-          { l: 'EVENT',     v: 'EC26',                     sub: 'Electric Castle',        c: '#00d4ff' },
-          { l: 'VENUE',     v: 'MAINSTAGE',                sub: 'Banffy Castle, Romania', c: '#00d4ff' },
-          { l: 'BUILD',     v: '12 DAYS',                  sub: '3 – 14 Jul 2026',        c: '#00d4ff' },
-          { l: 'SHOW DAYS', v: '3',                        sub: '17 – 19 Jul 2026',       c: '#00ff88' },
-          { l: 'TEAM',      v: `${teamOk}/${team.length}`, sub: `${team.length - teamOk} unassigned`,    c: teamOk < team.length ? '#f0b40a' : '#00ff88' },
-          { l: 'SUPPLIERS', v: `${suppOk}/${suppliers.length}`, sub: `${suppliers.length - suppOk} TBD`, c: suppOk < suppliers.length ? '#f0b40a' : '#00ff88' },
-          { l: 'ACTIONS',   v: String(highCount),          sub: 'high priority',          c: highCount > 0 ? '#ff4757' : '#00ff88' },
-        ].map((k, i) => (
-          <div key={i} className="d3-stat-pill" style={{ animationDelay: `${i * 60}ms` }}>
-            <div className="d3-stat-label">{k.l}</div>
-            <div className="d3-stat-value" style={{ color: k.c }}>{k.v}</div>
-            <div className="d3-stat-sub">{k.sub}</div>
-            <div className="d3-stat-glow" style={{ background: k.c }} />
-          </div>
-        ))}
-      </div>
+        {/* ── MAIN CONTENT GRID ───────────────────── */}
+        <div style={{ display: 'flex', gap: 14, flex: 1, alignItems: 'flex-start', minHeight: 0 }}>
+          <Swimlane schedule={schedule} />
+          <AlertFeed alerts={alerts} />
+        </div>
 
-      {/* ── BENTO GRID ───────────────────────────────────────── */}
-      <div className="d3-grid">
-        <SwimlaneTimeline />
-        <AlertFeed items={alerts} />
-        <TeamCard members={team} />
-        <SuppliersCard list={suppliers} />
-        <DisciplineTiles />
       </div>
-    </div>
+    </>
   );
 }
