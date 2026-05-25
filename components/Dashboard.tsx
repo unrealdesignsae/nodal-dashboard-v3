@@ -183,7 +183,7 @@ function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
   for (const e of schedule) { if (lanes[e.type]) lanes[e.type].push(e); }
 
   return (
-    <Card>
+    <Card style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       <CardHeader title="PRODUCTION SCHEDULE" badge="3 Jul – 26 Jul 2026" />
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
@@ -255,7 +255,7 @@ function AlertFeed({ alerts }: { alerts: ReturnType<typeof getAlerts> }) {
   };
 
   return (
-    <Card style={{ display: 'flex', flexDirection: 'column' }}>
+    <Card style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <CardHeader title="ACTION REQUIRED" accent="#ff4757" badge={`${alerts.length} OPEN`} badgeRed />
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {high.length > 0 && <div style={{ padding: '7px 14px 3px', fontFamily: 'monospace', fontSize: 8, letterSpacing: '0.15em', color: '#ff475770', fontWeight: 700 }}>▲ HIGH PRIORITY</div>}
@@ -474,17 +474,17 @@ export function Dashboard() {
           <StatPills stats={stats} />
 
           {/* ROW 1: Swimlane + Alerts */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <Swimlane schedule={schedule} />
             </div>
-            <div style={{ width: 'clamp(280px,32%,400px)', flexShrink: 0 }}>
+            <div style={{ width: 'clamp(280px,32%,400px)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               <AlertFeed alerts={alerts} />
             </div>
           </div>
 
           {/* ROW 2: Team list + Suppliers list */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
             <TeamCard members={team} />
             <SuppliersCard list={suppliers} />
           </div>
