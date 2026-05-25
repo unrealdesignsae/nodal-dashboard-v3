@@ -1,4 +1,5 @@
 import { Dashboard } from '@/components/Dashboard';
+import { NodalFooter } from '@/components/NodalFooter';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 
@@ -11,7 +12,10 @@ export default function DashboardPage() {
     <div className="app-shell">
       <TopBar activeTab="dashboard" />
       <Sidebar active="dashboard" />
-      <Dashboard />
+      <div style={{ display: 'flex', flexDirection: 'column', gridColumn: 'main', gridRow: 'main' }}>
+        <Dashboard />
+        <NodalFooter />
+      </div>
     </div>
   );
 }

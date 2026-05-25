@@ -31,11 +31,9 @@ const SHEETS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 export function Sidebar({ active = 'sheets' }: { active?: string }) {
   return (
     <aside className="sidebar">
-      {/* Logo */}
+      {/* Logo — mark only, no text */}
       <div className="sidebar-logo">
         <img src="/brand/nodal-logo-mark.png" alt="Nodal TC" />
-        <span className="sidebar-logo-text">NODAL TC</span>
-        <span className="sidebar-logo-sub">TECHNICAL CONSULTANCY</span>
       </div>
 
       {/* Top nav — Dashboard + All Sheets */}
