@@ -12,10 +12,10 @@ export default function DashboardPage() {
     <div className="app-shell">
       <TopBar activeTab="dashboard" />
       <Sidebar active="dashboard" />
-      <div style={{ display: 'flex', flexDirection: 'column', gridColumn: 'main', gridRow: 'main' }}>
+      <main className="main-content" style={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
         <Dashboard />
         <NodalFooter />
-      </div>
+      </main>
     </div>
   );
 }
