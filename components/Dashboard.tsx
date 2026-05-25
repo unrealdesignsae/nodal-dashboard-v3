@@ -1,5 +1,7 @@
 'use client';
 
+import { NodalFooter } from '@/components/NodalFooter';
+
 import { useEffect, useRef, useState } from 'react';
 import { useSheetData } from '@/lib/sheet-store';
 import { EMBEDDED_SHEET_DATA } from '@/lib/sheet-data';
@@ -477,6 +479,7 @@ export function Dashboard() {
           </div>
 
         </div>
+        <NodalFooter />
       </div>
     </>
   );
