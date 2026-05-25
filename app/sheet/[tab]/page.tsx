@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { SheetPage } from '@/components/SheetPage';
+import { TopBar } from '@/components/TopBar';
 import { EMBEDDED_SHEET_DATA, TAB_NAMES } from '@/lib/sheet-data';
 
 type Params = { tab: string };
@@ -15,6 +16,7 @@ export default function Page({ params }: { params: Params }) {
   if (!TAB_NAMES.includes(decoded as any)) notFound();
   return (
     <div className="app-shell">
+      <TopBar activeTab={decoded} />
       <Sidebar active={decoded} />
       <SheetPage tab={decoded} />
     </div>

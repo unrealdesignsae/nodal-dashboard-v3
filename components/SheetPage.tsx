@@ -379,7 +379,7 @@ export function SheetPage({ tab }: { tab: TabName }) {
   const totalVisible = filteredRows.filter(r => filled(getCells(r)).length > 0).length;
 
   return (
-    <main className="main">
+    <div className="main-content">
       {/* ── Header ── */}
       <div className="sheet-page-head">
         <div>
@@ -473,6 +473,6 @@ export function SheetPage({ tab }: { tab: TabName }) {
           </Link>
         )}
       </div>
-    </main>
+    </div>
   );
 }

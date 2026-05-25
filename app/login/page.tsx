@@ -24,38 +24,59 @@ export default function LoginPage() {
       router.push('/');
       router.refresh();
     } else {
-      setError('Incorrect passcode. Try again.');
+      setError('ACCESS DENIED — incorrect passcode');
       setLoading(false);
     }
   }
 
   return (
-    <div className="login-shell">
-      <div className="login-card">
-        <div className="login-logo">
-          <div className="login-icon">⬡</div>
-          <div className="eyebrow" style={{ textAlign: 'center', marginTop: 8 }}>NODAL TECHNICAL CONSULTANCY</div>
-          <h1 style={{ textAlign: 'center', fontSize: 22, margin: '8px 0 4px' }}>
-            <span className="gradient-text">EC26 Dashboard</span>
-          </h1>
-          <p style={{ textAlign: 'center', color: '#888', fontSize: 13, margin: 0 }}>Enter your access passcode</p>
+    <div className="login-page">
+      <div className="login-box">
+        {/* Logo */}
+        <img
+          src="/brand/nodal-logo-mark.png"
+          alt="Nodal Technical Consultancy"
+          className="login-logo"
+        />
+
+        {/* Title */}
+        <div className="login-title">
+          <h1>EC26 DASHBOARD</h1>
+          <p>NODAL TECHNICAL CONSULTANCY · RESTRICTED ACCESS</p>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="login-form">
           <input
             type="password"
-            placeholder="Passcode"
+            placeholder="ENTER PASSCODE"
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
             className="login-input"
             autoFocus
             autoComplete="current-password"
+            spellCheck={false}
           />
           {error && <div className="login-error">{error}</div>}
-          <button type="submit" className="btn login-btn" disabled={loading || !passcode}>
-            {loading ? 'Verifying…' : 'Enter Dashboard'}
+          <button
+            type="submit"
+            className="login-submit"
+            disabled={loading || !passcode}
+          >
+            {loading ? 'VERIFYING…' : 'ENTER DASHBOARD →'}
           </button>
         </form>
+
+        {/* Footer */}
+        <p style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '10px',
+          letterSpacing: '0.08em',
+          color: 'var(--text-muted)',
+          textAlign: 'center',
+        }}>
+          EC26 ELECTRIC CASTLE · MAINSTAGE · ADVANCING SHEET
+        </p>
       </div>
     </div>
   );

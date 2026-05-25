@@ -1,243 +1,238 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Activity, ArrowRight, Boxes, CalendarDays, CircuitBoard, ExternalLink, RadioTower, Zap, Layers } from 'lucide-react';
-import { DASHBOARD_ANALYTICS, DASHBOARD_KPIS, EMBEDDED_SHEET_DATA, TAB_NAMES, SHEET_ID } from '@/lib/sheet-data';
-import { SyncButton } from '@/components/SyncButton';
+import { useEffect, useRef, useState } from 'react';
+import { EMBEDDED_SHEET_DATA, TAB_NAMES, DASHBOARD_ANALYTICS } from '@/lib/sheet-data';
 
-const SHEETS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+/* ── Count-up animation (same as ec26-v2) ── */
+function CountUp({ target, duration = 1800 }: { target: number; duration?: number }) {
+  const [count, setCount] = useState(0);
+  const started = useRef(false);
+  const ref = useRef<HTMLSpanElement>(null);
 
-const ACCENT_COLORS = ['#38f4ff', '#8b5cf6', '#b8ff63', '#ff4fd8'];
-
-/* ── Animated counter ── */
-function Counter({ to, duration = 1200 }: { to: number; duration?: number }) {
-  const [val, setVal] = useState(0);
   useEffect(() => {
-    let start: number | null = null;
-    const step = (ts: number) => {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      setVal(Math.floor(progress * to));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [to, duration]);
-  return <>{val}</>;
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started.current) {
+        started.current = true;
+        let cur = 0;
+        const step = target / (duration / 16);
+        const timer = setInterval(() => {
+          cur += step;
+          if (cur >= target) { setCount(target); clearInterval(timer); }
+          else { setCount(Math.floor(cur)); }
+        }, 16);
+      }
+    }, { threshold: 0.4 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return <span ref={ref}>{count}</span>;
 }
 
-/* ── Animated bar ── */
-function AnimatedBar({ pct, color }: { pct: number; color: string }) {
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setWidth(pct), 100);
-    return () => clearTimeout(t);
-  }, [pct]);
-  return (
-    <div className="bar-track">
-      <div className="bar-fill" style={{ width: `${width}%`, background: color, transition: 'width 1.1s cubic-bezier(.22,1,.36,1)' }} />
-    </div>
-  );
+/* ── Parse OVERVIEW data ── */
+function parseOverview() {
+  const rows = EMBEDDED_SHEET_DATA.OVERVIEW.rows;
+
+  // Project info: rows 4-12
+  const projectInfo: { label: string; value: string }[] = [];
+  for (const row of rows) {
+    const c = row.cells;
+    if (!c || c.length < 3) continue;
+    const label = (c[0] ?? '').replace(':', '').trim();
+    const value = (c[2] ?? '').trim();
+    if (!label || !value) continue;
+    if (['Project Name', 'Event / Festival', 'Stage', 'Venue', 'Location / Address',
+         'GPS Coordinates', 'Version', 'Date', 'DASHBOARD DESIGN'].includes(label)) {
+      projectInfo.push({ label, value });
+    }
+  }
+
+  // Show dates: rows 13-19
+  const showDates: { label: string; value: string }[] = [];
+  for (const row of rows) {
+    const c = row.cells;
+    if (!c || c.length < 3) continue;
+    const label = (c[0] ?? '').replace(':', '').trim();
+    const value = (c[2] ?? '').trim();
+    if (['Build Start', 'Show Day 1', 'Show Day 2', 'Show Day 3', 'Show Day 4', 'Load Out End'].includes(label)) {
+      showDates.push({ label, value });
+    }
+  }
+
+  // Team: rows 22-onwards, cells at [0],[2],[4],[6],[8]
+  const team: { role: string; name: string; phone: string; email: string }[] = [];
+  let inTeam = false;
+  for (const row of rows) {
+    const c = row.cells;
+    if (!c) continue;
+    if ((c[0] ?? '').includes('3. PRODUCTION TEAM')) { inTeam = true; continue; }
+    if ((c[0] ?? '').includes('4.')) { inTeam = false; break; }
+    if (!inTeam) continue;
+    const role = (c[0] ?? '').trim();
+    if (!role || role === 'Role') continue;
+    const firstName = (c[2] ?? '').trim();
+    const lastName  = (c[4] ?? '').trim();
+    const phone = (c[6] ?? '').trim();
+    const email = (c[8] ?? '').trim();
+    const name = [firstName, lastName].filter(Boolean).join(' ') || '—';
+    team.push({ role, name, phone, email });
+  }
+
+  return { projectInfo, showDates, team };
 }
 
-/* ── Donut chart ── */
-function DonutChart({ segments }: { segments: { label: string; value: number; color: string }[] }) {
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  let cursor = 0;
-  const R = 70; const CX = 90; const CY = 90; const STROKE = 18;
+/* ── Discipline metrics pulled from DASHBOARD_ANALYTICS ── */
+const DISCIPLINE_METRICS = [
+  { tab: 'AUDIO',      label: 'AUDIO',      unit: 'units',    key: 'AUDIO' },
+  { tab: 'LIGHTING',   label: 'LIGHTING',   unit: 'fixtures', key: 'LIGHTING' },
+  { tab: 'VIDEO - LED',label: 'VIDEO / LED',unit: 'tiles',    key: 'VIDEO - LED' },
+  { tab: 'SFX - PYRO', label: 'SFX / PYRO', unit: 'effects',  key: 'SFX - PYRO' },
+  { tab: 'LASER',      label: 'LASER',      unit: 'units',    key: 'LASER' },
+  { tab: 'BROADCAST',  label: 'BROADCAST',  unit: 'units',    key: 'BROADCAST' },
+];
 
-  const arcs = segments.map((seg) => {
-    const pct = seg.value / total;
-    const start = cursor;
-    cursor += pct;
-    const startAngle = start * 2 * Math.PI - Math.PI / 2;
-    const endAngle = cursor * 2 * Math.PI - Math.PI / 2;
-    const x1 = CX + R * Math.cos(startAngle);
-    const y1 = CY + R * Math.sin(startAngle);
-    const x2 = CX + R * Math.cos(endAngle);
-    const y2 = CY + R * Math.sin(endAngle);
-    const large = pct > 0.5 ? 1 : 0;
-    return { ...seg, path: `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2}`, pct };
-  });
-
-  return (
-    <div className="donut-wrap">
-      <svg viewBox="0 0 180 180" className="donut-svg">
-        <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={STROKE} />
-        {arcs.map((a, i) => (
-          <path key={i} d={a.path} fill="none" stroke={a.color} strokeWidth={STROKE} strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 8px ${a.color}88)` }} />
-        ))}
-        <text x={CX} y={CY - 6} textAnchor="middle" fill="#fff" fontSize="22" fontFamily="Andral,monospace" fontWeight="bold">{total}</text>
-        <text x={CX} y={CY + 14} textAnchor="middle" fill="#91a4bf" fontSize="9" letterSpacing="2">ITEMS</text>
-      </svg>
-      <div className="donut-legend">
-        {arcs.map((a, i) => (
-          <div key={i} className="legend-row">
-            <span className="legend-dot" style={{ background: a.color, boxShadow: `0 0 8px ${a.color}` }} />
-            <span className="legend-label">{a.label}</span>
-            <span className="legend-val">{Math.round(a.pct * 100)}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
+function getDisciplineCount(tab: string): number {
+  const dept = DASHBOARD_ANALYTICS.departmentItems.find(
+    d => d.dept.toUpperCase() === tab.toUpperCase() ||
+         d.dept.toUpperCase().includes(tab.split(' - ')[0])
   );
-}
-
-/* ── Pulse ring decoration ── */
-function PulseRing() {
-  return (
-    <div className="pulse-ring-wrap" aria-hidden>
-      <div className="pulse-ring r1" />
-      <div className="pulse-ring r2" />
-      <div className="pulse-ring r3" />
-      <div className="pulse-center" />
-    </div>
-  );
+  return dept?.items ?? EMBEDDED_SHEET_DATA[tab as keyof typeof EMBEDDED_SHEET_DATA]?.nonEmptyRows ?? 0;
 }
 
 export function Dashboard() {
-  const maxItems = Math.max(...DASHBOARD_ANALYTICS.departmentItems.map((d) => d.items));
+  const { projectInfo, showDates, team } = parseOverview();
 
   return (
-    <main className="main">
-      {/* ── HERO ── */}
-      <section className="hero">
-        <div className="hero-content">
-          <div className="eyebrow">SYSTEMS PRECISION ENGINEERING · ELECTRIC CASTLE 2026</div>
-          <h1><span className="gradient-text">Mainstage command dashboard.</span></h1>
-          <p>A Nodal Technical Consultancy interface built from the live workbook — all pages, executive KPIs, analytics, and schedule telemetry.</p>
-          <div className="hero-actions">
-            <Link className="btn" href="/sheet/OVERVIEW"><CircuitBoard size={17} /> Open Workbook</Link>
-            <a className="btn secondary" href={SHEETS_URL} target="_blank" rel="noreferrer"><ExternalLink size={17} /> Google Sheet</a>
-            <a className="btn secondary" href="https://nodaltc.com" target="_blank" rel="noreferrer"><RadioTower size={17} /> Nodal Website</a>
-            <SyncButton />
-          </div>
-        </div>
-        <PulseRing />
-      </section>
+    <div className="main-content">
 
-      {/* ── KPIs ── */}
-      <section className="section">
-        <div className="kpi-grid">
-          {[
-            { label: 'Workbook Pages', value: DASHBOARD_KPIS.tabs, note: 'All sheet tabs mirrored', color: '#38f4ff' },
-            { label: 'Departments', value: DASHBOARD_KPIS.departments, note: 'Audio, lighting, video, power…', color: '#8b5cf6' },
-            { label: 'Line Items', value: DASHBOARD_KPIS.trackedItems, note: 'Parsed from advancing rows', color: '#b8ff63' },
-            { label: 'Schedule Days', value: DASHBOARD_KPIS.scheduleDays, note: 'Build → show → strike', color: '#ff4fd8' },
-          ].map((k, idx) => (
-            <div key={idx} className="kpi-card" style={{ '--glow': k.color } as React.CSSProperties}>
-              <div className="kpi-label">{k.label}</div>
-              <div className="kpi-value"><Counter to={k.value} /></div>
-              <div className="kpi-note">{k.note}</div>
-              <div className="kpi-glow" />
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── Badge + Title ── */}
+      <div className="badge">
+        <span className="badge-dot" />
+        ADVANCING SHEET
+      </div>
 
-      {/* ── CHARTS ROW ── */}
-      <section className="section dashboard-grid">
-        {/* Workload bars */}
-        <div className="glass-card panel">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">WORKLOAD ANALYTICS</div>
-              <h2 className="section-title">Department density</h2>
-              <p className="section-copy">Relative technical requirement density by department, extracted from advancing rows.</p>
-            </div>
-            <Activity color="#38f4ff" size={22} />
+      <h1 className="page-title">EC26 ELECTRIC CASTLE MAINSTAGE</h1>
+      <p className="page-subtitle">
+        Banffy Castle Domain · Bonțida, Romania · v01 · Nodal Technical Consultancy
+      </p>
+
+      {/* ── Discipline metric cards ── */}
+      <div className="metrics-grid stagger">
+        {DISCIPLINE_METRICS.map(({ tab, label, unit }) => {
+          const count = getDisciplineCount(tab);
+          return (
+            <Link
+              key={tab}
+              href={`/sheet/${encodeURIComponent(tab)}`}
+              className="metric-card"
+              style={{ textDecoration: 'none' }}
+            >
+              <div className="metric-discipline">{label}</div>
+              <div className="metric-value">
+                <CountUp target={count} />
+              </div>
+              <div className="metric-unit">{unit}</div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* ── Info panels ── */}
+      <div className="panels-grid">
+
+        {/* Project info */}
+        <div className="panel">
+          <div className="panel-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+            </svg>
+            PROJECT INFO
           </div>
-          <div className="chart-bars">
-            {DASHBOARD_ANALYTICS.departmentItems.map((d, i) => (
-              <div className="bar-row" key={d.dept}>
-                <span>{d.dept}</span>
-                <AnimatedBar
-                  pct={Math.max(6, (d.items / maxItems) * 100)}
-                  color={`linear-gradient(90deg, ${ACCENT_COLORS[i % 4]}, ${ACCENT_COLORS[(i + 1) % 4]})`}
-                />
-                <span>{d.items}</span>
+          <div className="panel-body">
+            {projectInfo.map(({ label, value }) => (
+              <div className="info-row" key={label}>
+                <span className="info-label">{label}</span>
+                <span className="info-value">{value}</span>
+              </div>
+            ))}
+            <div className="panel-header" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none', marginTop: 4 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              SHOW DATES
+            </div>
+            {showDates.map(({ label, value }) => (
+              <div className="info-row" key={label}>
+                <span className="info-label">{label}</span>
+                <span className="info-value">{value}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Donut chart */}
-        <div className="glass-card panel">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">DISTRIBUTION</div>
-              <h2 className="section-title">Item split</h2>
-            </div>
-            <Boxes color="#b8ff63" size={22} />
+        {/* All disciplines quick-nav */}
+        <div className="panel">
+          <div className="panel-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+            </svg>
+            ALL DEPARTMENTS
           </div>
-          <DonutChart
-            segments={DASHBOARD_ANALYTICS.departmentItems.slice(0, 5).map((d, i) => ({
-              label: d.dept,
-              value: d.items,
-              color: ACCENT_COLORS[i % 4],
-            }))}
-          />
+          <div className="panel-body">
+            {TAB_NAMES.map((tab) => {
+              const data = EMBEDDED_SHEET_DATA[tab as keyof typeof EMBEDDED_SHEET_DATA];
+              return (
+                <Link
+                  key={tab}
+                  href={`/sheet/${encodeURIComponent(tab)}`}
+                  className="info-row"
+                  style={{ display: 'grid', textDecoration: 'none', cursor: 'pointer' }}
+                >
+                  <span className="info-label">{tab}</span>
+                  <span className="info-value" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{data?.nonEmptyRows ?? 0} rows</span>
+                    <span style={{ color: 'var(--accent)', fontSize: '12px' }}>→</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── TIMELINE ── */}
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">BUILD SEQUENCE</div>
-            <h2 className="section-title">Schedule pulse</h2>
+      {/* ── Production team roster ── */}
+      {team.length > 0 && (
+        <div className="panel" style={{ marginBottom: '32px' }}>
+          <div className="panel-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+            </svg>
+            PRODUCTION TEAM
           </div>
-          <CalendarDays color="#ff4fd8" size={22} />
-        </div>
-        <div className="timeline-track">
-          {(DASHBOARD_ANALYTICS.schedule as Array<{ date?: string; phase?: string; details?: string; resource?: string }>).slice(0, 6).map((s, i) => (
-            <div className="timeline-node" key={`${s.date ?? i}-${i}`}>
-              <div className="tnode-dot" style={{ '--c': ACCENT_COLORS[i % 4] } as React.CSSProperties} />
-              <div className="tnode-card glass-card">
-                <div className="tnode-date">{s.date ?? '—'}</div>
-                <div className="tnode-title">{s.phase ?? 'Scheduled operation'}</div>
-                <div className="tnode-copy">{s.details ?? s.resource ?? ''}</div>
+          <div className="panel-body">
+            {/* Header */}
+            <div className="roster-row" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,212,255,0.03)' }}>
+              <span className="info-label">ROLE</span>
+              <span className="info-label">NAME</span>
+              <span className="info-label">CONTACT</span>
+            </div>
+            {team.map(({ role, name, phone, email }) => (
+              <div className="roster-row" key={role + name}>
+                <span className="roster-role">{role}</span>
+                <span className="roster-name">{name}</span>
+                <span className="roster-contact">{phone || email || '—'}</span>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── TAB CARDS ── */}
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">WORKBOOK PAGES</div>
-            <h2 className="section-title">All departments</h2>
-            <p className="section-copy">Every tab converted into a rich interface — search, filter, and explore.</p>
+            ))}
           </div>
-          <Layers color="#8b5cf6" size={22} />
         </div>
-        <div className="tab-grid">
-          {TAB_NAMES.map((tab, i) => {
-            const item = EMBEDDED_SHEET_DATA[tab];
-            return (
-              <Link href={`/sheet/${encodeURIComponent(tab)}`} className="tab-card glass-card" key={tab}>
-                <div className="tab-accent" style={{ background: ACCENT_COLORS[i % 4] }} />
-                <div className="tab-top">
-                  <div className="tab-name">{tab}</div>
-                  <span className="pill">OPEN <ArrowRight size={11} /></span>
-                </div>
-                <p className="tab-desc">{item.headline}</p>
-                <div className="tab-stats">
-                  <div className="mini-stat"><strong>{item.nonEmptyRows}</strong><span>Rows</span></div>
-                  <div className="mini-stat"><strong>{item.metrics.sections}</strong><span>Sections</span></div>
-                  <div className="mini-stat"><strong>{item.maxCols}</strong><span>Cols</span></div>
-                </div>
-                <div className="tab-hover-glow" style={{ '--c': ACCENT_COLORS[i % 4] + '22' } as React.CSSProperties} />
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      )}
 
-      <p className="footer-note mono">DATA SOURCE: Google Sheets · {DASHBOARD_KPIS.project} · {DASHBOARD_KPIS.venue} · {DASHBOARD_KPIS.location}</p>
-    </main>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+        DATA SOURCE: GOOGLE SHEETS · EC26 ELECTRIC CASTLE MAINSTAGE · BANFFY CASTLE DOMAIN, BONȚIDA, ROMANIA
+      </p>
+    </div>
   );
 }
