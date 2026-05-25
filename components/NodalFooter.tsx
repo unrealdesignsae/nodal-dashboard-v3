@@ -5,21 +5,22 @@ export function NodalFooter() {
     <footer className="nodal-footer">
       <div className="nodal-footer-inner">
 
-        {/* Brand */}
+        {/* Brand — logo BESIDE text */}
         <div className="nodal-footer-brand">
-          <img
-            src="/brand/nodal-logo-mark.png"
-            alt="Nodal TC"
-            className="nodal-footer-logo"
-          />
-          <div className="nodal-footer-company">
-            NODAL TECHNICAL CONSULTANCY
+          {/* Logo with animated ring */}
+          <div className="nodal-footer-logo-wrap">
+            <div className="nodal-footer-logo-ring" />
+            <img
+              src="/brand/nodal-logo-mark.png"
+              alt="Nodal TC"
+              className="nodal-footer-logo"
+            />
           </div>
-          <div className="nodal-footer-sub">
-            FZ-LLC · Dubai, UAE · Global Delivery
-          </div>
-          <div className="nodal-footer-tagline">
-            Precision Event Engineering
+          {/* Text beside logo */}
+          <div className="nodal-footer-brand-text">
+            <div className="nodal-footer-company">NODAL TECHNICAL CONSULTANCY</div>
+            <div className="nodal-footer-sub">FZ-LLC · Dubai, UAE · Global Delivery</div>
+            <div className="nodal-footer-tagline">Precision Event Engineering</div>
           </div>
         </div>
 
@@ -51,15 +52,11 @@ export function NodalFooter() {
 
         {/* Accepting briefs */}
         <div className="nodal-footer-cta">
-          <div className="nodal-footer-brief-badge">
-            ACCEPTING BRIEFS 2026 – 2027
-          </div>
+          <div className="nodal-footer-brief-badge">ACCEPTING BRIEFS 2026 – 2027</div>
           <a href="https://nodaltc.com/#contact" target="_blank" rel="noreferrer" className="nodal-footer-cta-link">
             Start a conversation →
           </a>
-          <div className="nodal-footer-meta">
-            EC26 · MAINSTAGE ADVANCING · INTERNAL
-          </div>
+          <div className="nodal-footer-meta">EC26 · MAINSTAGE ADVANCING · INTERNAL</div>
         </div>
 
       </div>

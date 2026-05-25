@@ -187,15 +187,26 @@ function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
           const ph = PHASE[type];
           return (
             <div key={type} className="dash-swimlane-lane">
-              <div className="dash-swimlane-lane-label">
-                <div className="dash-swimlane-dot" style={{ background: ph.color, boxShadow: `0 0 6px ${ph.color}` }} />
-                <span style={{ color: ph.color }}>{ph.label}</span>
+              {/* Sticky lane header */}
+              <div className="dash-swimlane-lane-header">
+                <div className="dash-swimlane-dot" style={{ background: ph.color, boxShadow: `0 0 5px ${ph.color}` }} />
+                <span className="dash-swimlane-lane-label" style={{ color: ph.color }}>{ph.label}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 9, color: 'var(--text-muted)', marginLeft: 4 }}>
+                  {events.length} event{events.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="dash-swimlane-chips">
+              {/* Flat event rows */}
+              <div className="dash-swimlane-rows">
                 {events.map((e, i) => (
-                  <div key={i} title={`${e.date} – ${e.tag || e.detail}`} className="dash-swimlane-chip">
-                    <span className="dash-swimlane-chip-date">{e.date}</span>
-                    <span className="dash-swimlane-chip-text">{e.tag || e.detail}</span>
+                  <div
+                    key={i}
+                    className="dash-swimlane-row"
+                    title={`${e.date} – ${e.tag || e.detail}`}
+                    style={{ borderLeftColor: ph.color }}
+                  >
+                    <span className="dash-swimlane-row-date" style={{ color: ph.color }}>{e.date}</span>
+                    <span className="dash-swimlane-row-sep">—</span>
+                    <span className="dash-swimlane-row-text">{e.tag || e.detail}</span>
                   </div>
                 ))}
               </div>
@@ -206,6 +217,7 @@ function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
     </Card>
   );
 }
+
 
 /* ─────────────────────────────────────────────
    ACTION FEED
