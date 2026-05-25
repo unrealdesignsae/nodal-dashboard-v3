@@ -38,7 +38,7 @@ export function Sidebar({ active = 'sheets' }: { active?: string }) {
 
       {/* Top nav — Dashboard + All Sheets */}
       <div className="sidebar-section-label">MAIN</div>
-      <nav aria-label="Main navigation">
+      <nav className="sidebar-nav" aria-label="Main navigation" style={{ flex: 'none' }}>
         <Link href="/dashboard" className={`nav-item ${active === 'dashboard' ? 'active' : ''}`}>
           <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d={icons['dashboard']} />
