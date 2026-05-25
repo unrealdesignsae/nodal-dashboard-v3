@@ -415,39 +415,28 @@ export function Dashboard() {
             </span>
           </div>
 
-          {/* EC LOGO — large header image */}
-          <img
-            src="/ec-logo.png"
-            alt="Electric Castle 16–19 July 2026"
-            style={{
-              height: 'clamp(60px, 9vw, 120px)',
-              width: 'auto',
-              objectFit: 'contain',
-              objectPosition: 'left center',
-              display: 'block',
-              marginBottom: 16,
-              filter: 'drop-shadow(0 6px 32px rgba(255,20,20,0.5)) drop-shadow(0 2px 8px rgba(0,0,0,0.6))',
-            }}
-          />
+          {/* LOGO + COUNTDOWN row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, marginBottom: 14 }}>
+            {/* EC LOGO — full width of left column */}
+            <img
+              src="/ec-logo.png"
+              alt="Electric Castle 16–19 July 2026"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                width: '100%',
+                maxWidth: 680,
+                height: 'clamp(70px, 10vw, 130px)',
+                objectFit: 'contain',
+                objectPosition: 'left center',
+                display: 'block',
+                mixBlendMode: 'screen',
+                filter: 'drop-shadow(0 4px 28px rgba(255,20,20,0.6))',
+              }}
+            />
 
-          {/* Event meta + Countdown in same row */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            {/* Left: meta */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Banffy Castle Domain · Bonțida, Romania</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>16 – 19 July 2026 · 3 Show Days</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Countdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            {/* Countdown — right */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
               <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.18em', color: 'rgba(0,212,255,0.5)', fontWeight: 700 }}>SHOWTIME COUNTDOWN</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
                 <Digit n={d} label="DAYS" />
@@ -461,6 +450,18 @@ export function Dashboard() {
               <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.1em', color: '#00ff88', background: 'rgba(0,255,136,0.07)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: 5, padding: '3px 8px', textShadow: '0 0 8px rgba(0,255,136,0.35)' }}>
                 17 – 19 July 2026 · Show Days
               </div>
+            </div>
+          </div>
+
+          {/* Location meta row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Banffy Castle Domain · Bonțida, Romania</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>16 – 19 July 2026 · 3 Show Days</span>
             </div>
           </div>
         </div>

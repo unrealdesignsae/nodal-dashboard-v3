@@ -1,17 +1,5 @@
-import { Dashboard } from '@/components/Dashboard';
-import { Sidebar } from '@/components/Sidebar';
-import { TopBar } from '@/components/TopBar';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'EC26 Dashboard | Nodal Technical Consultancy',
-};
-
-export default function Page() {
-  return (
-    <div className="app-shell">
-      <TopBar activeTab="dashboard" />
-      <Sidebar active="dashboard" />
-      <Dashboard />
-    </div>
-  );
+export default function RootPage() {
+  redirect('/dashboard');
 }

@@ -35,6 +35,7 @@ export function Sidebar({ active = 'sheets' }: { active?: string }) {
       <div className="sidebar-logo">
         <img src="/brand/nodal-logo-mark.png" alt="Nodal TC" />
         <span className="sidebar-logo-text">NODAL TC</span>
+        <span className="sidebar-logo-sub">TECHNICAL CONSULTANCY</span>
       </div>
 
       {/* Top nav — Dashboard + All Sheets */}
