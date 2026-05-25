@@ -2,7 +2,7 @@
 
 import { NodalFooter } from '@/components/NodalFooter';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSheetData } from '@/lib/sheet-store';
 import { EMBEDDED_SHEET_DATA } from '@/lib/sheet-data';
 
@@ -83,14 +83,18 @@ function getSchedule(sd: SheetData) {
    HOOKS
 ───────────────────────────────────────────── */
 function useCountdown(target: Date) {
+  const targetMs = target.getTime();
+  const [mounted, setMounted] = useState(false);
   const [diff, setDiff] = useState(0);
   useEffect(() => {
-    const tick = () => setDiff(Math.max(0, target.getTime() - Date.now()));
+    setMounted(true);
+    const tick = () => setDiff(Math.max(0, targetMs - Date.now()));
     tick(); const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [target]);
+  }, [targetMs]);
   const total = Math.floor(diff / 1000);
-  return { d: Math.floor(total / 86400), h: Math.floor((total % 86400) / 3600), m: Math.floor((total % 3600) / 60), sec: total % 60 };
+  if (!mounted) return { d: 0, h: 0, m: 0, sec: 0, mounted: false };
+  return { d: Math.floor(total / 86400), h: Math.floor((total % 86400) / 3600), m: Math.floor((total % 3600) / 60), sec: total % 60, mounted: true };
 }
 
 function useInView() {
@@ -110,7 +114,7 @@ function useInView() {
 function Digit({ n, label }: { n: number; label: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-      <div style={{
+      <div suppressHydrationWarning style={{
         background: 'rgba(0,212,255,0.07)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 8,
         padding: '6px 12px', fontFamily: '"JetBrains Mono","Fira Code",monospace',
         fontSize: 'clamp(20px,2.4vw,32px)', fontWeight: 800, color: '#00d4ff',
@@ -375,8 +379,8 @@ export function Dashboard() {
   const teamOk    = team.filter(t => t.name).length;
   const suppOk    = suppliers.filter(s => s.company).length;
   const highCount = alerts.filter(a => a.level === 'high').length;
-  const showDate  = new Date('2026-07-17T18:00:00');
-  const { d, h, m, sec } = useCountdown(showDate);
+  const showDate  = useMemo(() => new Date('2026-07-17T18:00:00'), []);
+  const { d, h, m, sec, mounted } = useCountdown(showDate);
 
   const stats = [
     { label: 'EVENT',     value: 'EC26',                        sub: 'Electric Castle',         color: '#00d4ff' },
