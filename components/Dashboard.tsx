@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { EMBEDDED_SHEET_DATA } from '@/lib/sheet-data';
+import { useEffect, useRef, useState } from 'react';
 import { useSheetData } from '@/lib/sheet-store';
+import { EMBEDDED_SHEET_DATA } from '@/lib/sheet-data';
 
 /* ─────────────────────────────────────────────
    DATA HELPERS
@@ -65,15 +65,16 @@ function getSchedule(sd: SheetData) {
   const out: { date: string; tag: string; detail: string; type: string }[] = [];
   for (const r of sd['Sheet1'].rows) {
     const date = s(r.cells?.[0]); const tag = s(r.cells?.[1]);
-    const phase = s(r.cells?.[2]); const detail = s(r.cells?.[3]);
+    const detail = s(r.cells?.[3]);
+    const phaseRaw = s(r.cells?.[2]);
     if (!date || !/\d+\/Jul/i.test(date)) continue;
-    const p = (phase + tag).toLowerCase();
+    const p = (phaseRaw + tag).toLowerCase();
     const type = p.includes('show') || /day [123]/.test(p) ? 'show'
       : p.includes('steel') || p.includes('load out') || p.includes('loading') ? 'steel'
       : p.includes('travel') ? 'travel'
       : p.includes('probe') || p.includes('program') || p.includes('day 0') ? 'prep'
       : 'build';
-    out.push({ date, tag, phase, detail, type });
+    out.push({ date, tag, detail, type });
   }
   return out;
 }
