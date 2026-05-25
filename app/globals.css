@@ -1196,15 +1196,16 @@ ul, ol { list-style: none; }
 }
 .dash-swimlane-row:hover { background: var(--accent-glow); }
 .dash-swimlane-row-date {
-  font-family: monospace; font-size: 11px; font-weight: 700;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  color: var(--accent);
   white-space: nowrap; min-width: 54px; flex-shrink: 0;
 }
 .dash-swimlane-row-sep {
-  font-family: monospace; font-size: 11px;
+  font-family: var(--font-mono); font-size: 11px;
   color: var(--text-muted); margin: 0 8px; flex-shrink: 0;
 }
 .dash-swimlane-row-text {
-  font-family: monospace; font-size: 11px; color: var(--text-secondary);
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 

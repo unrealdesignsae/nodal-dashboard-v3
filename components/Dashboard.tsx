@@ -55,11 +55,11 @@ function getAlerts(team: ReturnType<typeof getTeam>, suppliers: ReturnType<typeo
 }
 
 const PHASE: Record<string, { color: string; bg: string; label: string }> = {
-  show:   { color: 'var(--accent)',      bg: 'var(--accent-glow)',  label: 'SHOW'   },
-  build:  { color: 'var(--accent-dim)',  bg: 'var(--accent-glow)',  label: 'BUILD'  },
-  prep:   { color: 'var(--accent)',      bg: 'var(--accent-glow)',  label: 'PREP'   },
-  steel:  { color: 'var(--text-secondary)', bg: 'rgba(128,128,128,0.08)', label: 'OUT'    },
-  travel: { color: 'var(--text-muted)',  bg: 'rgba(100,116,139,0.08)', label: 'TRAVEL' },
+  show:   { color: 'var(--accent)',     bg: 'var(--accent-glow)',            label: 'SHOW'   },
+  build:  { color: 'var(--accent)',     bg: 'var(--accent-glow)',            label: 'BUILD'  },
+  prep:   { color: 'var(--accent)',     bg: 'var(--accent-glow)',            label: 'PREP'   },
+  steel:  { color: 'var(--accent)',     bg: 'rgba(0,212,255,0.04)',          label: 'OUT'    },
+  travel: { color: 'var(--accent)',     bg: 'rgba(0,212,255,0.04)',          label: 'TRAVEL' },
 };
 
 function getSchedule(sd: SheetData) {
