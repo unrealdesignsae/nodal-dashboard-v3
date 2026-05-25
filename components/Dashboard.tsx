@@ -137,13 +137,13 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 
 function CardHeader({ title, accent = '#00d4ff', badge, badgeRed }: { title: string; accent?: string; badge?: string; badgeRed?: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 3, height: 14, background: accent, borderRadius: 2 }} />
-        <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.8)' }}>{title}</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 3, height: 16, background: accent, borderRadius: 2 }} />
+        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.9)' }}>{title}</span>
       </div>
       {badge && (
-        <div style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: badgeRed ? '#ff4757' : '#00ff88', background: badgeRed ? 'rgba(255,71,87,0.1)' : 'rgba(0,255,136,0.1)', border: `1px solid ${badgeRed ? 'rgba(255,71,87,0.3)' : 'rgba(0,255,136,0.25)'}`, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.08em' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: badgeRed ? '#ff4757' : '#00ff88', background: badgeRed ? 'rgba(255,71,87,0.1)' : 'rgba(0,255,136,0.1)', border: `1px solid ${badgeRed ? 'rgba(255,71,87,0.3)' : 'rgba(0,255,136,0.25)'}`, borderRadius: 5, padding: '3px 9px', letterSpacing: '0.08em' }}>
           {badge}
         </div>
       )}
@@ -161,14 +161,14 @@ function StatPills({ stats }: { stats: { label: string; value: string; sub: stri
       {stats.map((st, i) => (
         <div key={i} style={{
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 12, padding: '12px 16px', flex: 1, minWidth: 110, position: 'relative', overflow: 'hidden',
+          borderRadius: 12, padding: '14px 18px', flex: 1, minWidth: 110, position: 'relative', overflow: 'hidden',
           opacity: vis ? 1 : 0, transform: vis ? 'translateY(0)' : 'translateY(10px)',
           transition: `opacity 0.4s ease ${i * 55}ms, transform 0.4s ease ${i * 55}ms`,
         }}>
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,${st.color},transparent)` }} />
-          <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginBottom: 5, fontWeight: 600 }}>{st.label}</div>
-          <div style={{ fontFamily: '"JetBrains Mono",monospace', fontSize: 'clamp(15px,1.8vw,22px)', fontWeight: 800, color: st.color, lineHeight: 1, marginBottom: 3, textShadow: `0 0 12px ${st.color}60` }}>{st.value}</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 9, color: 'rgba(255,255,255,0.28)', lineHeight: 1.3 }}>{st.sub}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', marginBottom: 6, fontWeight: 600 }}>{st.label}</div>
+          <div style={{ fontFamily: '"JetBrains Mono",monospace', fontSize: 'clamp(16px,2vw,24px)', fontWeight: 800, color: st.color, lineHeight: 1, marginBottom: 4, textShadow: `0 0 12px ${st.color}60` }}>{st.value}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.3 }}>{st.sub}</div>
         </div>
       ))}
     </div>
@@ -183,36 +183,36 @@ function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
   for (const e of schedule) { if (lanes[e.type]) lanes[e.type].push(e); }
 
   return (
-    <Card style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <Card style={{ display: 'flex', flexDirection: 'column' }}>
       <CardHeader title="PRODUCTION SCHEDULE" badge="3 Jul – 26 Jul 2026" />
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 14, padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 14, padding: '10px 18px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
         {Object.entries(PHASE).map(([k, v]) => (
-          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.color }} />
-            <span style={{ fontFamily: 'monospace', fontSize: 9, color: v.color, letterSpacing: '0.08em' }}>{v.label}</span>
+          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: v.color }} />
+            <span style={{ fontFamily: 'monospace', fontSize: 11, color: v.color, letterSpacing: '0.08em' }}>{v.label}</span>
           </div>
         ))}
       </div>
       {/* Lanes */}
-      <div style={{ padding: '6px 0' }}>
+      <div style={{ padding: '4px 0', overflowY: 'auto', flex: 1 }}>
         {Object.entries(lanes).map(([type, events]) => {
           if (!events.length) return null;
           const ph = PHASE[type];
           return (
-            <div key={type} style={{ display: 'flex', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.03)', padding: '5px 0' }}>
-              <div style={{ width: 68, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px 4px 16px' }}>
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: ph.color, boxShadow: `0 0 5px ${ph.color}` }} />
-                <span style={{ fontFamily: 'monospace', fontSize: 8, color: ph.color, fontWeight: 700, letterSpacing: '0.1em' }}>{ph.label}</span>
+            <div key={type} style={{ display: 'flex', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.03)', padding: '6px 0' }}>
+              <div style={{ width: 76, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 18px' }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: ph.color, boxShadow: `0 0 6px ${ph.color}` }} />
+                <span style={{ fontFamily: 'monospace', fontSize: 11, color: ph.color, fontWeight: 700, letterSpacing: '0.1em' }}>{ph.label}</span>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 5px', padding: '2px 12px 2px 0', flex: 1 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', padding: '2px 14px 2px 0', flex: 1 }}>
                 {events.map((e, i) => (
-                  <div key={i} title={`${e.date} — ${e.tag || e.detail}`} style={{
+                  <div key={i} title={`${e.date} – ${e.tag || e.detail}`} style={{
                     background: ph.bg, border: `1px solid ${ph.color}28`, borderRadius: 5,
-                    padding: '2px 7px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'default',
+                    padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'default',
                   }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: 8, color: ph.color, fontWeight: 700, whiteSpace: 'nowrap' }}>{e.date}</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: 8, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.tag || e.detail}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: ph.color, fontWeight: 700, whiteSpace: 'nowrap' }}>{e.date}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.tag || e.detail}</span>
                   </div>
                 ))}
               </div>
@@ -244,10 +244,10 @@ function AlertFeed({ alerts }: { alerts: ReturnType<typeof getAlerts> }) {
           </svg>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.82)' }}>{a.text}</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{a.note}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>{a.text}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>{a.note}</div>
         </div>
-        <div style={{ fontFamily: 'monospace', fontSize: 8, fontWeight: 700, color: col, background: `${col}12`, border: `1px solid ${col}28`, borderRadius: 4, padding: '2px 5px', letterSpacing: '0.08em', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: col, background: `${col}12`, border: `1px solid ${col}28`, borderRadius: 4, padding: '3px 7px', letterSpacing: '0.08em', flexShrink: 0 }}>
           {a.level === 'high' ? 'HIGH' : 'MED'}
         </div>
       </div>
@@ -420,18 +420,17 @@ export function Dashboard() {
             {/* EC LOGO — full width of left column */}
             <img
               src="/ec-logo.png"
-              alt="Electric Castle 16–19 July 2026"
+              alt="Electric Castle 16-19 July 2026"
               style={{
                 flex: 1,
                 minWidth: 0,
                 width: '100%',
-                maxWidth: 680,
-                height: 'clamp(70px, 10vw, 130px)',
+                maxWidth: 700,
+                height: 'clamp(90px, 12vw, 160px)',
                 objectFit: 'contain',
                 objectPosition: 'left center',
                 display: 'block',
-                mixBlendMode: 'screen',
-                filter: 'drop-shadow(0 4px 28px rgba(255,20,20,0.6))',
+                filter: 'drop-shadow(0 6px 36px rgba(255,20,20,0.55))',
               }}
             />
 
@@ -474,18 +473,10 @@ export function Dashboard() {
           {/* STAT PILLS */}
           <StatPills stats={stats} />
 
-          {/* ROW 1: Swimlane + Alerts */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-              <Swimlane schedule={schedule} />
-            </div>
-            <div style={{ width: 'clamp(280px,32%,400px)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-              <AlertFeed alerts={alerts} />
-            </div>
-          </div>
-
-          {/* ROW 2: Team list + Suppliers list */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+          {/* ALL 4 CARDS — equal 2x2 grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Swimlane schedule={schedule} />
+            <AlertFeed alerts={alerts} />
             <TeamCard members={team} />
             <SuppliersCard list={suppliers} />
           </div>
