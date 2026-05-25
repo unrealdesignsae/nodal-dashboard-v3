@@ -238,7 +238,7 @@ function Swimlane({ schedule }: { schedule: ReturnType<typeof getSchedule> }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', padding: '2px 12px 2px 0', flex: 1 }}>
                 {events.map((e, i) => {
                   const dateNum = e.date.replace('/Jul', '/Jul');
-                  const label = e.tag || e.detail || e.phase;
+                  const label = e.tag || e.detail || '';
                   const short = label.length > 28 ? label.slice(0, 26) + '…' : label;
                   return (
                     <div key={i} title={`${e.date} — ${label}`} style={{
