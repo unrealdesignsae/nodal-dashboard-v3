@@ -112,7 +112,9 @@ function getTBDStats() {
       if (nonEmpty.length < 2) continue;
       total++;
       totalItems++;
-      if (cells.some(c => c.toUpperCase() === 'TBD' || c === '')) {
+      // Only flag rows where a filled cell explicitly says TBD or TBC
+      const hasTBD = nonEmpty.some(c => /^(tbd|tbc)$/i.test(c));
+      if (hasTBD) {
         tbd++;
         totalTBD++;
       }
