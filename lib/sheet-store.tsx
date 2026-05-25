@@ -132,43 +132,29 @@ export function SheetStoreProvider({ children }: { children: React.ReactNode }) 
     setStatus('loading');
 
     try {
-      const tabs = TAB_NAMES as readonly string[];
-      let anyLive = false;
-      const next = { ...data } as SheetData;
+      // Single call to live-sync API — fetches all tabs from Google Sheets
+      // server-side on Vercel. Works even when the user's PC is off.
+      const res = await fetch('/api/live-sync', { cache: 'no-store' });
 
-      // Fetch all tabs in parallel
-      const results = await Promise.allSettled(
-        tabs.map(async (tab) => {
-          const res = await fetch(
-            `/api/sheets/${encodeURIComponent(tab)}`,
-            { cache: 'no-store' }
-          );
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return { tab, json: await res.json() };
-        })
-      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json() as { ok: boolean; data: SheetData; synced: string };
 
-      for (const result of results) {
-        if (result.status === 'rejected') continue;
-        const { tab, json } = result.value;
-
-        if (json.live === false) {
-          // API returned embedded data — no credentials
-          continue;
-        }
-
-        anyLive = true;
-        // json.values is the raw 2-D array from Google Sheets API
-        if (Array.isArray(json.values)) {
-          const key = tab as keyof SheetData;
-          next[key] = processRawValues(tab, json.values, EMBEDDED_SHEET_DATA[key]) as never;
-        }
-      }
-
-      if (!anyLive) {
+      if (!json.ok || !json.data) {
         setStatus('no-creds');
         setTimeout(() => setStatus('idle'), 6000);
         return;
+      }
+
+      // Merge live rows into current state
+      const next = { ...data } as SheetData;
+      for (const [tab, tabData] of Object.entries(json.data)) {
+        const key = tab as keyof SheetData;
+        if (EMBEDDED_SHEET_DATA[key] && tabData) {
+          next[key] = {
+            ...EMBEDDED_SHEET_DATA[key],
+            ...tabData,
+          } as never;
+        }
       }
 
       const ts = new Date().toLocaleTimeString();
